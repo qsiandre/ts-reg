@@ -1,0 +1,16 @@
+[package]
+name = "ts_infer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rusqlite = "0.30.0"
+serde_rusqlite = "0.34.0"
+burn-dataset = { version = "0.11.0", features = ["__sqlite-shared", "sqlite"] }
+burn-import = "0.11.0"
+burn-core = "0.11.0"
+burn = { version = "0.11.0", features = ["ndarray"] }
+serde = "1.0.193"
+
+[build-dependencies]
+burn-import = "0.11.0"
