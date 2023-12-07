@@ -2993,6 +2993,7 @@ dependencies = [
  "burn-core",
  "burn-dataset",
  "burn-import",
+ "ndarray",
  "rusqlite",
  "serde",
  "serde_rusqlite",

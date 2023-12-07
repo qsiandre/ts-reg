@@ -1,3 +1,4 @@
+import sys 
 import numpy as np
 from PIL import Image
 
@@ -51,3 +52,10 @@ def gramian(ts, fn):
 
 def max_min_norm(ts):
   return (ts - ts.max() + (ts - ts.min())) / (ts.max() - ts.min())
+
+if __name__ == "__main__":
+  n = int(sys.argv[1])
+  xc = int(sys.argv[2])
+  diff = int(sys.argv[3])
+  for e in gen_ts(n, xc, diff):
+    print(e)
