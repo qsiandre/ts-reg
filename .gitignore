@@ -2,3 +2,6 @@ data
 env
 __pycache__
 target
+sample.png
+samples.json
+pkg

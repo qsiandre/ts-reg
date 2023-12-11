@@ -1,4 +1,5 @@
 import sys 
+import json
 import numpy as np
 from PIL import Image
 
@@ -57,5 +58,13 @@ if __name__ == "__main__":
   n = int(sys.argv[1])
   xc = int(sys.argv[2])
   diff = int(sys.argv[3])
-  for e in gen_ts(n, xc, diff):
-    print(e)
+  format = sys.argv[4] 
+  ts = gen_ts(n, xc, diff)
+  if format == "json":
+    stringifyable = []
+    for e in ts:
+      stringifyable.append(e)
+    print(json.dumps(stringifyable))
+  else: 
+    for e in ts:
+      print(e)

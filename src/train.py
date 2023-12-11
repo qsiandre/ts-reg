@@ -41,27 +41,47 @@ def triangulate(ts, learn_inf, viz=False):
 def get_label(fname):
   return str(fname).split('/')[1]
 
+def to128(image):
+  if len(image.shape) != 2:
+    return image
+
+  size=128
+  image = np.array(image).astype('uint8')
+  target = [[(0, 0, 0) for i in range(size)] for j in range(size)]
+  width = image.shape[0]
+  height = image.shape[1] 
+  newWid = size
+  newHt = size
+  for x in range(0, newWid):  
+    for y in range(0, newHt):
+      srcX = int( round( float(x) / float(newWid) * float(width) ) )
+      srcY = int( round( float(y) / float(newHt) * float(height) ) )
+      srcX = min( srcX, width-1)
+      srcY = min( srcY, height-1)
+      target[x][y] = image[srcX][srcY]
+  return Image.fromarray(np.array(target).astype('uint8'))
+
 if __name__ == '__main__':
   ts = DataBlock(
     blocks=(ImageBlock, CategoryBlock),
     get_items=get_image_files,
     splitter=RandomSplitter(valid_pct=0.2, seed=42),
     get_y=get_label,
-    item_tfms=Resize(128)
+    item_tfms=[Transform(to128)]
   )
   dls = ts.dataloaders(Path('data'))
-  # dls.valid.show_batch(max_n=4, nrows=1)
-  # matplotlib.pyplot.show()
+  dls.valid.show_batch(max_n=4, nrows=1)
+  matplotlib.pyplot.show()
 
   learn = vision_learner(dls, resnet18, metrics=error_rate)
-  learn.fine_tune(7)
+  learn.fine_tune(3)
 
   interp = ClassificationInterpretation.from_learner(learn)
-  # interp.plot_confusion_matrix()
-  # matplotlib.pyplot.show()
+  interp.plot_confusion_matrix()
+  matplotlib.pyplot.show()
 
-  # interp.plot_top_losses(20, nrows=5)
-  # matplotlib.pyplot.show()
+  interp.plot_top_losses(20, nrows=5)
+  matplotlib.pyplot.show()
 
   learn.export('models/reg-7epoch.pkl')
 

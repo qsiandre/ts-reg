@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Burn MNIST Inference Web Demo</title>
+    <style>
+      h1 {
+        padding: 15px;
+      }
+      body {
+        padding: 5px;
+        text-align: center;
+        vertical-align: middle;
+      }
+      .card {
+        margin: 5px;
+        border-style: solid;
+        border-radius: 2px;
+        border-color: black;
+        height: 400px;
+        width: 400px;
+        overflow-wrap: break-word;
+      }
+      .body {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      .body>.card:first-child {
+        flex: 0 1 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ASAP Inference Demo</h1>
+    <div>
+      <div class="input">
+        <input id="fs" />
+        <button id="send">Send</button></td>
+      </div>
+      <div class="body">
+        <div class="card">
+          <h2> Inference </h2>
+          <pre id="out"></pre> 
+        </div>
+        <div class="card">
+          <h2> Time Series </h2>
+          <canvas id="canvas_ts" height=300 width=300></canvas>
+        </div>
+        <div class="card">
+          <h2> Gramian </h2>
+          <canvas id="canvas_gramian" height=256 width=256></canvas>
+        </div>
+      </div>
+    </div>
+    <script type="module">
+      import { default as wasm, Asap } from "./pkg/ts_infer.js";
+      import data from './samples.json' assert {type: 'json'};
+
+      function scale_01(p, min, max) {
+        return (p - min) / (max - min);
+      }
+
+      function draw_ts(canvas, ts, smooth, prediction) {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        const max = Math.max(...ts); 
+        const min = Math.min(...ts);
+        const dx = canvas.width / ts.length;
+        const dy = canvas.height / (max - min);
+        const step = canvas.width / (prediction.length - 1);
+        for (let ix = 1, x = 0; ix < prediction.length; ix++, x+= step) {
+          ctx.fillStyle = `rgba(126, 143, 227, ${prediction[ix]})`;
+          ctx.fillRect(x, 0, step, canvas.height);
+        }
+        ctx.beginPath();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "black";
+        ctx.moveTo(0, canvas.height - scale_01(ts[0], min, max) * canvas.height);
+        for (let ix = 1, x = dx; ix < ts.length; ix++, x += dx) {
+          const scaled = scale_01(ts[ix], min, max); 
+          ctx.lineTo(x, canvas.height - scaled * canvas.height);
+        }
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "orange";
+        ctx.moveTo(smooth[0] * dx, canvas.height - scale_01(ts[1], min, max) * canvas.height);
+        for (let ix = 2; ix < smooth.length; ix += 2) {
+          let x = smooth[ix];
+          let y = smooth[ix + 1];
+          ctx.lineTo(dx * x, canvas.height - scale_01(y, min, max) * canvas.height);
+        }
+        ctx.stroke();
+      }
+
+      function draw_gramian(canvas, flat) {
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let ix = 0;
+        function getNext() {
+          const value = flat[ix];
+          ix += 1;
+          return value;
+        }
+        const height = getNext();
+        const width = getNext();
+        const dx = canvas.height / height; 
+        const dy = canvas.width / width; 
+        let id = 0;
+        while (ix < flat.length) {
+          const r = getNext();
+          const g = getNext();
+          const b = getNext();
+          const col = Math.floor(id / width);
+          const row = id % width;
+          ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+          ctx.fillRect(row*dx, col*dy, dx, dy);
+          id++;
+        }
+      }
+
+      function predict(floats) {
+        out.innerHTML = 'loading'; 
+        let timeoutId;
+        wasm().then((module) => {
+          const model = new Asap();
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(async () => {
+            const input = Float32Array.from(floats);
+            const output = await model.inference(input);
+            const rgb = await model.gramian_rgb(input);
+            const smooth = await model.smooth(input);
+            draw_ts(canvas_ts, floats, smooth, output);
+            draw_gramian(canvas_gramian, rgb);
+            out.innerHTML = JSON.stringify(output, null, '\n'); 
+          }, 50);
+        });
+      }
+
+      predict(data);
+      send.onclick = () => {
+        const floats = fs.value.split(',').map(e => parseFloat(e));
+        predict(floats);
+      };
+    </script>
+  </body>
+</html>
